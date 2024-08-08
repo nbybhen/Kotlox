@@ -1,44 +1,42 @@
-class Scanner(val source: String = "") {
-    var tokens: MutableList<Token> = mutableListOf();
+class Scanner(val source: String) {
+    private val tokens: MutableList<Token> = mutableListOf();
     private var start: Int = 0;
     private var current: Int = 0;
     private var line: Int = 1;
-    private val keywords: Map<String, TokenType> = mapOf(
-        "and" to TokenType.AND,
-        "class" to TokenType.CLASS,
-        "else" to TokenType.ELSE,
-        "false" to TokenType.FALSE,
-        "for" to TokenType.FOR,
-        "fun" to TokenType.FUN,
-        "if" to TokenType.IF,
-        "nil" to TokenType.NIL,
-        "or" to TokenType.OR,
-        "print" to TokenType.PRINT,
-        "return" to TokenType.RETURN,
-        "super" to TokenType.SUPER,
-        "this" to TokenType.THIS,
-        "true" to TokenType.TRUE,
-        "var" to TokenType.VAR,
-        "while" to TokenType.WHILE
-    )
 
+    companion object {
+        private val keywords: Map<String, TokenType> = mapOf(
+            "and" to TokenType.AND,
+            "class" to TokenType.CLASS,
+            "else" to TokenType.ELSE,
+            "false" to TokenType.FALSE,
+            "for" to TokenType.FOR,
+            "fun" to TokenType.FUN,
+            "if" to TokenType.IF,
+            "nil" to TokenType.NIL,
+            "or" to TokenType.OR,
+            "print" to TokenType.PRINT,
+            "return" to TokenType.RETURN,
+            "super" to TokenType.SUPER,
+            "this" to TokenType.THIS,
+            "true" to TokenType.TRUE,
+            "var" to TokenType.VAR,
+            "while" to TokenType.WHILE
+        );
+    }
 
-    fun scanTokens(): MutableList<Token> {
+    fun scanTokens(): List<Token> {
         while(!isAtEnd()) {
             start = current;
             scanToken();
         }
         tokens.add(Token(TokenType.EOF, "", null, line));
 
-        return tokens;
+        return tokens.toList();
     }
 
     private fun match(expected: Char): Boolean {
-        if(isAtEnd()) {
-            return false;
-        }
-
-        if(source[current] != expected) {
+        if(isAtEnd() || source[current] != expected) {
             return false;
         }
 
@@ -76,29 +74,26 @@ class Scanner(val source: String = "") {
             }
             ' ', '\r', '\t' -> {}
             '\n' -> line++
-            '"' -> string()
-            else -> {
-                if(isDigit(c)) {
-                    number();
-                }
-                else if(c.isLetter()) {
-                    identifier();
-                }
-                else {
-                    // TODO: Setup Lox error
-                }
-            }
+            '"' -> createString()
+            in '0'..'9' -> createNumber()
+            in 'a'..'z', in 'A'..'Z' -> createIdentifier()
+            else -> error(line, "Unexpected character")
         }
     }
 
     //
     // Helper Functions
     //
+
+    private fun Char.isAlphaNum() {
+        return
+    }
+
     private fun isAtEnd(): Boolean {
         return current >= source.length
     }
 
-    private fun number() {
+    private fun createNumber() {
         while(isDigit(peek())) {
             advance();
         }
@@ -117,10 +112,10 @@ class Scanner(val source: String = "") {
     }
 
     private fun isDigit(c: Char): Boolean {
-        return c >= '0' && c <= '9';
+        return c in '0'..'9';
     }
 
-    private fun identifier() {
+    private fun createIdentifier() {
         while (peek().isLetterOrDigit()) {
             advance();
         }
@@ -142,7 +137,7 @@ class Scanner(val source: String = "") {
         return source[current + 1];
     }
 
-    private fun string() {
+    private fun createString() {
         while(peek() != '"' && !isAtEnd()) {
             if(peek() == '\n') {
                 line++;
