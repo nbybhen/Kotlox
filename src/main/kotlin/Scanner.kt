@@ -146,7 +146,7 @@ class Scanner(private val source: String) {
         }
 
         if(isAtEnd()) {
-            error(line, "Unexpected character")
+            error(line, "Unterminated string")
             return
         }
 
