@@ -1,21 +1,48 @@
 import kotlin.system.exitProcess
+import java.io.File
 
-fun runPrompt() {
-    // TODO
+fun error(line: Int, message: String) {
+    report(line, "", message);
 }
 
-fun runFile(file: String) {
-    // TODO
+fun report(line: Int, where: String, message: String) {
+    System.err.println("[line $line] Error $where: $message");
+}
+
+// Starts language REPL
+fun runPrompt() {
+    while(true) {
+        print("> ")
+        val line = readlnOrNull() ?: break
+        run(line)
+    }
+}
+
+// Runs language via .klox file (chosen in Intellij configuration)
+fun runFile(path: String) {
+    val inputStream = File(path).inputStream();
+    val inputString = inputStream.bufferedReader().use { it.readText() };
+    run(inputString)
+}
+
+
+fun run(source: String) {
+    var scanner = Scanner(source);
+    var tokens = scanner.scanTokens();
+
+    for(token in tokens) {
+        println("$token");
+    }
 }
 
 fun main(args: Array<String>) {
-    println("Args: ${args}");
+    println("Args: ${args.joinToString(" | ")}")
     when (args.size) {
         0 -> runPrompt()
         1 -> runFile(args[0])
         else -> {
-            println("Usage: klox [script]");
-            exitProcess(64);
+            println("Usage: klox [script]")
+            exitProcess(64)
         }
     }
 }
