@@ -15,4 +15,4 @@ enum class TokenType {
     PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE, EOF
 }
 
-data class Token(val type: TokenType, val lexeme: String, val literal: Any?, val line: Int);
+data class Token(val type: TokenType, val lexeme: String, val literal: Any?, val line: Int)

@@ -1,8 +1,8 @@
-class Scanner(val source: String) {
-    private val tokens: MutableList<Token> = mutableListOf();
-    private var start: Int = 0;
-    private var current: Int = 0;
-    private var line: Int = 1;
+class Scanner(private val source: String) {
+    private val tokens: MutableList<Token> = mutableListOf()
+    private var start: Int = 0
+    private var current: Int = 0
+    private var line: Int = 1
 
     companion object {
         private val keywords: Map<String, TokenType> = mapOf(
@@ -22,30 +22,30 @@ class Scanner(val source: String) {
             "true" to TokenType.TRUE,
             "var" to TokenType.VAR,
             "while" to TokenType.WHILE
-        );
+        )
     }
 
     fun scanTokens(): List<Token> {
         while(!isAtEnd()) {
-            start = current;
-            scanToken();
+            start = current
+            scanToken()
         }
-        tokens.add(Token(TokenType.EOF, "", null, line));
+        tokens.add(Token(TokenType.EOF, "", null, line))
 
-        return tokens.toList();
+        return tokens.toList()
     }
 
     private fun match(expected: Char): Boolean {
         if(isAtEnd() || source[current] != expected) {
-            return false;
+            return false
         }
 
-        current++;
-        return true;
+        current++
+        return true
     }
 
     private fun scanToken() {
-        val c: Char = advance();
+        val c: Char = advance()
 
         when(c) {
             '(' -> addToken(TokenType.LEFT_PAREN)
@@ -65,11 +65,11 @@ class Scanner(val source: String) {
             '/' -> {
                 if(match('/')) {
                     while(!isAtEnd() && peek() != '\n') {
-                        advance();
+                        advance()
                     }
                 }
                 else {
-                    addToken(TokenType.SLASH);
+                    addToken(TokenType.SLASH)
                 }
             }
             ' ', '\r', '\t' -> {}
@@ -85,8 +85,8 @@ class Scanner(val source: String) {
     // Helper Functions
     //
 
-    private fun Char.isAlphaNum() {
-        return
+    private fun Char.isAlphaNum(): Boolean {
+        return this in 'a'..'z' || this in 'A'..'Z' || this == '_' || this in '0'..'9'
     }
 
     private fun isAtEnd(): Boolean {
@@ -95,16 +95,16 @@ class Scanner(val source: String) {
 
     private fun createNumber() {
         while(isDigit(peek())) {
-            advance();
+            advance()
         }
 
         // Checks for decimal
         if (peek() == '.' && isDigit(peekNext())) {
             // Consumes the '.'
-            advance();
+            advance()
 
             while(isDigit(peek())) {
-                advance();
+                advance()
             }
         }
 
@@ -112,69 +112,69 @@ class Scanner(val source: String) {
     }
 
     private fun isDigit(c: Char): Boolean {
-        return c in '0'..'9';
+        return c in '0'..'9'
     }
 
     private fun createIdentifier() {
-        while (peek().isLetterOrDigit()) {
-            advance();
+        while (peek().isAlphaNum()) {
+            advance()
         }
 
-        val text: String = source.substring(start, current);
-        var type: TokenType? = keywords[text];
+        val text: String = source.substring(start, current)
+        var type: TokenType? = keywords[text]
 
         if(type == null) {
-            type = TokenType.IDENTIFIER;
+            type = TokenType.IDENTIFIER
         }
 
-        addToken(type);
+        addToken(type)
     }
 
     private fun peekNext(): Char {
         if(current + 1 >= source.length) {
-            return '\u0000';
+            return '\u0000'
         }
-        return source[current + 1];
+        return source[current + 1]
     }
 
     private fun createString() {
         while(peek() != '"' && !isAtEnd()) {
             if(peek() == '\n') {
-                line++;
+                line++
             }
-            advance();
+            advance()
         }
 
         if(isAtEnd()) {
-            // TODO: "Unterminated string" Lox error
-            return;
+            error(line, "Unexpected character")
+            return
         }
 
         // Captures the closing "
-        advance();
+        advance()
 
         // Removes the " from the ends
-        val value: String = source.substring(start + 1, current - 1);
-        addToken(TokenType.STRING, value);
+        val value: String = source.substring(start + 1, current - 1)
+        addToken(TokenType.STRING, value)
     }
 
     private fun advance(): Char {
-        return source[current++];
+        return source[current++]
     }
 
     private fun peek(): Char {
         if(isAtEnd()) {
-            return '\u0000';
+            return '\u0000'
         }
-        return source[current];
+        return source[current]
     }
 
     private fun addToken(type: TokenType) {
-        addToken(type, null);
+        addToken(type, null)
     }
 
     private fun addToken(type: TokenType, literal: Any?) {
-        var text = source.substring(start, current);
-        tokens.add(Token(type, text, literal, line));
+        val text = source.substring(start, current)
+        tokens.add(Token(type, text, literal, line))
     }
 }
