@@ -1,7 +1,9 @@
 import kotlin.system.exitProcess
 import java.io.File
 
-var hasError = false;
+var hadError = false
+var hadRuntimeError = false
+var interpreter = Interpreter()
 
 fun error(line: Int, message: String) {
     report(line, "", message)
@@ -16,9 +18,14 @@ fun error(token: Token, message: String) {
     }
 }
 
+fun runtimeError(error: RuntimeError) {
+    System.err.println("${error.message}\n[line ${error.token.line}]")
+    hadRuntimeError = true
+}
+
 fun report(line: Int, where: String, message: String) {
     System.err.println("[line $line] Error $where: $message")
-    hasError = true
+    hadError = true
 }
 
 // Starts language REPL
@@ -45,11 +52,16 @@ fun run(source: String) {
     val parser = Parser(tokens)
     val expr: Expr? = parser.parse()
 
-    if(hasError) return;
+    if(hadError) exitProcess(65)
+    if(hadRuntimeError) exitProcess(70)
 
     if(expr != null) {
         println(AstPrinter().print(expr))
     }
+
+    interpreter.interpret(expr)
+
+
 }
 
 fun main(args: Array<String>) {
@@ -62,8 +74,8 @@ fun main(args: Array<String>) {
             exitProcess(64)
         }
     }
-    val expression = Expr.Binary(Expr.Unary(Token(TokenType.MINUS, "-", null, 1), Expr.Literal(123)),
-        Token(TokenType.STAR, "*", null, 1),
-        Expr.Grouping(Expr.Literal(45.67)))
-    println(AstPrinter().print(expression))
+//    val expression = Expr.Binary(Expr.Unary(Token(TokenType.MINUS, "-", null, 1), Expr.Literal(123)),
+//        Token(TokenType.STAR, "*", null, 1),
+//        Expr.Grouping(Expr.Literal(45.67)))
+//    println(AstPrinter().print(expression))
 }

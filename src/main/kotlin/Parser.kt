@@ -1,6 +1,6 @@
 import error as mainErr
 
-interface Expr {
+sealed interface Expr {
     interface Visitor<R> {
         fun visitBinaryExpr(expr: Binary) : R
         fun visitUnaryExpr(expr: Unary) : R
