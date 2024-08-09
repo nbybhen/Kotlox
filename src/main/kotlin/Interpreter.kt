@@ -1,7 +1,8 @@
 import kotlin.RuntimeException
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
 class Interpreter : Expr.Visitor<Any?> {
-
     fun interpret(expression: Expr?) {
         try {
             val value = evaluate(expression)
@@ -10,6 +11,7 @@ class Interpreter : Expr.Visitor<Any?> {
             runtimeError(error)
         }
     }
+
     override fun visitBinaryExpr(expr: Expr.Binary): Any? {
         val left = evaluate(expr.left)
         val right = evaluate(expr.right)
@@ -28,31 +30,31 @@ class Interpreter : Expr.Visitor<Any?> {
             }
             TokenType.MINUS -> {
                 checkNumberOperands(expr.operator, left, right)
-                left as Double - right as Double
+                left - right
             }
             TokenType.STAR -> {
                 checkNumberOperands(expr.operator, left, right)
-                left as Double * right as Double
+                left * right
             }
             TokenType.SLASH -> {
                 checkNumberOperands(expr.operator, left, right)
-                left as Double / right as Double
+                left / right
             }
             TokenType.GREATER -> {
                 checkNumberOperands(expr.operator, left, right)
-                left as Double > right as Double
+                left > right
             }
             TokenType.GREATER_EQUAL -> {
                 checkNumberOperands(expr.operator, left, right)
-                left as Double >= right as Double
+                left >= right
             }
             TokenType.LESS -> {
                 checkNumberOperands(expr.operator, left, right)
-                (left as Double) < right as Double
+                left  < right
             }
             TokenType.LESS_EQUAL -> {
                 checkNumberOperands(expr.operator, left, right)
-                left as Double <= right as Double
+                left <= right
             }
             TokenType.BANG_EQUAL -> !isEqual(left, right)
             TokenType.EQUAL_EQUAL -> isEqual(left, right)
@@ -66,7 +68,7 @@ class Interpreter : Expr.Visitor<Any?> {
         return when(expr.operator.type) {
             TokenType.MINUS -> {
                 checkNumberOperand(expr.operator, right)
-                -(right as Double)
+                -right
             }
             TokenType.BANG -> !isTruthy(right)
             else -> null
@@ -104,12 +106,20 @@ class Interpreter : Expr.Visitor<Any?> {
         return a.equals(b)
     }
 
+    @OptIn(ExperimentalContracts::class)
     private fun checkNumberOperand(operator: Token, operand: Any?) {
+        contract {
+            returns() implies (operand is Double)
+        }
         if(operand !is Double) throw RuntimeError(operator, "Operand must be a number.")
     }
 
+    @OptIn(ExperimentalContracts::class)
     private fun checkNumberOperands(operator: Token, left: Any?, right: Any?) {
-        if(left !is Double && right !is Double) throw RuntimeError(operator, "Operands must be numbers.")
+        contract {
+            returns() implies (left is Double && right is Double)
+        }
+        if(left !is Double || right !is Double) throw RuntimeError(operator, "Operands must be numbers.")
     }
 
     private fun stringify(obj: Any?): Any {
@@ -128,4 +138,4 @@ class Interpreter : Expr.Visitor<Any?> {
 
 }
 
-class RuntimeError(val token: Token, message: String) : RuntimeException()
+class RuntimeError(val token: Token, override val message: String?) : RuntimeException()

@@ -60,8 +60,6 @@ fun run(source: String) {
     }
 
     interpreter.interpret(expr)
-
-
 }
 
 fun main(args: Array<String>) {
@@ -74,8 +72,4 @@ fun main(args: Array<String>) {
             exitProcess(64)
         }
     }
-//    val expression = Expr.Binary(Expr.Unary(Token(TokenType.MINUS, "-", null, 1), Expr.Literal(123)),
-//        Token(TokenType.STAR, "*", null, 1),
-//        Expr.Grouping(Expr.Literal(45.67)))
-//    println(AstPrinter().print(expression))
 }
