@@ -1,12 +1,24 @@
 import kotlin.system.exitProcess
 import java.io.File
 
+var hasError = false;
+
 fun error(line: Int, message: String) {
     report(line, "", message)
 }
 
+fun error(token: Token, message: String) {
+    if(token.type == TokenType.EOF) {
+        report(token.line, "at end", message)
+    }
+    else {
+        report(token.line, " at '${token.lexeme}'" ,message)
+    }
+}
+
 fun report(line: Int, where: String, message: String) {
     System.err.println("[line $line] Error $where: $message")
+    hasError = true
 }
 
 // Starts language REPL
@@ -28,10 +40,15 @@ fun runFile(path: String) {
 
 fun run(source: String) {
     val scanner = Scanner(source)
-    val tokens = scanner.scanTokens()
+    val tokens: List<Token> = scanner.scanTokens()
 
-    for(token in tokens) {
-        println("$token")
+    val parser = Parser(tokens)
+    val expr: Expr? = parser.parse()
+
+    if(hasError) return;
+
+    if(expr != null) {
+        println(AstPrinter().print(expr))
     }
 }
 

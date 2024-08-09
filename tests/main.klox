@@ -1,2 +1,2 @@
-// Temporary klox data!
-print("Hello World!");
+// Temporary klox data
+1 + 2.5 + (3*2)
