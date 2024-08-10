@@ -54,15 +54,13 @@ fun run(source: String) {
 
     if(hadError) exitProcess(65)
 
-    if (stmts != null) {
-        interpreter.interpret(stmts)
-    }
+    interpreter.interpret(stmts)
 
     if(hadRuntimeError) exitProcess(70)
 }
 
 fun main(args: Array<String>) {
-    println("Args: ${args.joinToString(" | ")}")
+    println("${args.joinToString(" | ")}")
     when (args.size) {
         0 -> runPrompt()
         1 -> runFile(args[0])

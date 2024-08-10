@@ -5,13 +5,15 @@ import error as mainErr
 
 
     program        → statement* EOF ;
+    statement      → exprStmt | printStmt | block ;
+    block          → "{" declaration* "}" ;
     declaration    → varDecl | statement ;
     varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
-    statement      → exprStmt | printStmt ;
     exprStmt       → expression ";" ;
     printStmt      → "print" expression ";" ;
 
-    expression     → equality ;
+    expression     → assignment ;
+    assignment     → IDENTIFIER "=" assignment | equality ;
     equality       → comparison ( ( "!=" | "==" ) comparison )* ;
     comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     term           → factor ( ( "-" | "+" ) factor )* ;
@@ -55,7 +57,11 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun statement(): Stmt {
-        return if(match(TokenType.PRINT)) printStatement() else expressionStatement()
+        return when {
+            match(TokenType.PRINT) -> printStatement()
+            match(TokenType.LEFT_BRACE) -> Stmt.Block(block())
+            else -> expressionStatement()
+        }
     }
 
     private fun printStatement(): Stmt {
@@ -70,8 +76,34 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.Expression(expr)
     }
 
+    private fun block(): List<Stmt?> {
+        val stmts = mutableListOf<Stmt?>()
+
+        while (!check(TokenType.RIGHT_BRACE)) {
+            stmts.add(declaration())
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+        return stmts
+    }
+
     private fun expression(): Expr {
-        return equality()
+        return assignment()
+    }
+
+    private fun assignment(): Expr {
+        val expr: Expr = equality()
+
+        if (match(TokenType.EQUAL)) {
+            val equals: Token = previous()
+            val value = assignment()
+
+            if (expr is Expr.Variable) return Expr.Assign(expr.name, value)
+
+            error(equals, "Invalid assignment target.")
+        }
+
+        return expr
     }
 
     private fun equality(): Expr {

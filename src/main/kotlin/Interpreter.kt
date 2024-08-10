@@ -3,7 +3,7 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
-    val environment = Environment()
+    var environment = Environment()
     fun interpret(stmts: List<Stmt?>) {
         try {
             for(stmt in stmts) {
@@ -16,8 +16,8 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
         }
     }
 
-    private fun execute(stmt: Stmt) {
-        stmt.accept(this)
+    private fun execute(stmt: Stmt?) {
+        stmt?.accept(this)
     }
 
     override fun visitBinaryExpr(expr: Expr.Binary): Any? {
@@ -95,6 +95,12 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
         return environment.get(expr.name)
     }
 
+    override fun visitAssignExpr(expr: Expr.Assign): Any? {
+        val value = evaluate(expr.value)
+        environment.assign(expr.name, value)
+        return value
+    }
+
     private fun evaluate(expr: Expr?) : Any? {
         return expr?.accept(this)
     }
@@ -148,6 +154,19 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
         }
     }
 
+    private fun executeBlock(stmts: List<Stmt?>, environment: Environment) {
+        val previous = this.environment
+        try {
+            this.environment = environment
+
+            for (stmt in stmts) {
+                execute(stmt)
+            }
+        } finally {
+            this.environment = previous
+        }
+    }
+
     override fun visitExpressionStmt(stmt: Stmt.Expression): Any? {
         this.evaluate(stmt.expression)
         return null
@@ -166,6 +185,11 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
         }
 
         environment.define(stmt.name.lexeme, value)
+        return null
+    }
+
+    override fun visitBlockStmt(stmt: Stmt.Block): Any? {
+        executeBlock(stmt.statements, Environment(this.environment))
         return null
     }
 }
