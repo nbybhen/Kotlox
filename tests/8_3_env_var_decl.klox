@@ -1,0 +1,11 @@
+var a = "before";
+print a; // "before".
+var a = "after";
+print a; // "after".
+
+print a;
+var a = "too late!";
+
+var a = 1;
+var b = 2;
+print a + b;

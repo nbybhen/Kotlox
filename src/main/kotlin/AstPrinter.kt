@@ -33,4 +33,8 @@ class AstPrinter : Expr.Visitor<String> {
         return parenthesize("group", listOf(expr.expression))
     }
 
+    override fun visitVariableExpr(expr: Expr.Variable): String {
+        TODO("Not yet implemented")
+    }
+
 }

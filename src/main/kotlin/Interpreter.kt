@@ -2,14 +2,22 @@ import kotlin.RuntimeException
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
-class Interpreter : Expr.Visitor<Any?> {
-    fun interpret(expression: Expr?) {
+class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
+    val environment = Environment()
+    fun interpret(stmts: List<Stmt?>) {
         try {
-            val value = evaluate(expression)
-            println(stringify(value))
+            for(stmt in stmts) {
+                if (stmt != null) {
+                    execute(stmt)
+                }
+            }
         } catch (error: RuntimeError) {
             runtimeError(error)
         }
+    }
+
+    private fun execute(stmt: Stmt) {
+        stmt.accept(this)
     }
 
     override fun visitBinaryExpr(expr: Expr.Binary): Any? {
@@ -83,6 +91,10 @@ class Interpreter : Expr.Visitor<Any?> {
         return evaluate(expr.expression)
     }
 
+    override fun visitVariableExpr(expr: Expr.Variable): Any? {
+        return environment.get(expr.name)
+    }
+
     private fun evaluate(expr: Expr?) : Any? {
         return expr?.accept(this)
     }
@@ -136,6 +148,26 @@ class Interpreter : Expr.Visitor<Any?> {
         }
     }
 
+    override fun visitExpressionStmt(stmt: Stmt.Expression): Any? {
+        this.evaluate(stmt.expression)
+        return null
+    }
+
+    override fun visitPrintStmt(stmt: Stmt.Print): Any? {
+        val value = evaluate(stmt.expression)
+        println(stringify(value))
+        return null
+    }
+
+    override fun visitVarStmt(stmt: Stmt.Var): Any? {
+        var value: Any? = null
+        if (stmt.initializer != null) {
+            value = evaluate(stmt.initializer)
+        }
+
+        environment.define(stmt.name.lexeme, value)
+        return null
+    }
 }
 
 class RuntimeError(val token: Token, override val message: String?) : RuntimeException()

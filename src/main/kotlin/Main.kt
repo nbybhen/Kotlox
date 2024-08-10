@@ -50,16 +50,15 @@ fun run(source: String) {
     val tokens: List<Token> = scanner.scanTokens()
 
     val parser = Parser(tokens)
-    val expr: Expr? = parser.parse()
+    val stmts: List<Stmt?> = parser.parse()
 
     if(hadError) exitProcess(65)
-    if(hadRuntimeError) exitProcess(70)
 
-    if(expr != null) {
-        println(AstPrinter().print(expr))
+    if (stmts != null) {
+        interpreter.interpret(stmts)
     }
 
-    interpreter.interpret(expr)
+    if(hadRuntimeError) exitProcess(70)
 }
 
 fun main(args: Array<String>) {

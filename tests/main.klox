@@ -1,2 +1,4 @@
 // Temporary klox data
-3 * 2
+print "one";
+print true;
+print 2 + 1;

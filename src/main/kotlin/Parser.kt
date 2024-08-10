@@ -1,42 +1,15 @@
 import error as mainErr
 
-sealed interface Expr {
-    interface Visitor<R> {
-        fun visitBinaryExpr(expr: Binary) : R
-        fun visitUnaryExpr(expr: Unary) : R
-        fun visitLiteralExpr(expr: Literal) : R
-        fun visitGroupingExpr(expr: Grouping) : R
-    }
-
-    data class Binary(val left: Expr, val operator: Token, val right: Expr) : Expr {
-        override fun<R> accept(visitor: Visitor<R>): R {
-            return visitor.visitBinaryExpr(this)
-        }
-    }
-
-    data class Unary(val operator: Token, val right: Expr): Expr {
-        override fun<R> accept(visitor: Visitor<R>): R {
-            return visitor.visitUnaryExpr(this)
-        }
-    }
-
-    data class Grouping(val expression: Expr) : Expr {
-        override fun<R> accept(visitor: Visitor<R>): R {
-            return visitor.visitGroupingExpr(this)
-        }
-    }
-
-    data class Literal(val value: Any?) : Expr {
-        override fun<R> accept(visitor: Visitor<R>): R {
-            return visitor.visitLiteralExpr(this)
-        }
-    }
-
-    fun<R> accept(visitor: Visitor<R>): R
-}
-
 /*
     EBNF GRAMMAR
+
+
+    program        → statement* EOF ;
+    declaration    → varDecl | statement ;
+    varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+    statement      → exprStmt | printStmt ;
+    exprStmt       → expression ";" ;
+    printStmt      → "print" expression ";" ;
 
     expression     → equality ;
     equality       → comparison ( ( "!=" | "==" ) comparison )* ;
@@ -46,7 +19,7 @@ sealed interface Expr {
     unary          → ( "!" | "-" ) unary
     | primary ;
     primary        → NUMBER | STRING | "true" | "false" | "nil"
-    | "(" expression ")" ;
+    | "(" expression ")" | IDENTIFIER  ;
 */
 
 class Parser(private val tokens: List<Token>) {
@@ -54,12 +27,47 @@ class Parser(private val tokens: List<Token>) {
 
     private var current: Int = 0
 
-    fun parse(): Expr? {
-        return try {
-            expression()
-        } catch (e: ParseError) {
-            null
+    fun parse(): List<Stmt?> {
+        val stmts = mutableListOf<Stmt?>()
+        while(!isAtEnd()) {
+            stmts.add(declaration())
         }
+        return stmts
+    }
+
+    private fun declaration(): Stmt? {
+        try {
+            return if (match(TokenType.VAR)) return varDeclaration() else statement()
+        } catch (error: ParseError) {
+            synchronize()
+            return null
+        }
+    }
+
+    private fun varDeclaration(): Stmt {
+        val name: Token = consume(TokenType.IDENTIFIER, "Expect variable name")
+
+        var initializer: Expr? = null
+        if (match(TokenType.EQUAL)) initializer = expression()
+
+        consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+        return Stmt.Var(name, initializer)
+    }
+
+    private fun statement(): Stmt {
+        return if(match(TokenType.PRINT)) printStatement() else expressionStatement()
+    }
+
+    private fun printStatement(): Stmt {
+        val value = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return Stmt.Print(value)
+    }
+
+    private fun expressionStatement(): Stmt {
+        val expr: Expr = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return Stmt.Expression(expr)
     }
 
     private fun expression(): Expr {
@@ -132,6 +140,7 @@ class Parser(private val tokens: List<Token>) {
                 consume(TokenType.RIGHT_PAREN, "Expected ')' after expression")
                 Expr.Grouping(expr)
             }
+            match(TokenType.IDENTIFIER) -> Expr.Variable(previous())
             else -> throw error(peek(), "Expected expression")
         }
     }
