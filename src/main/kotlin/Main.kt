@@ -24,7 +24,7 @@ fun runtimeError(error: RuntimeError) {
 }
 
 fun report(line: Int, where: String, message: String) {
-    System.err.println("[line $line] Error $where: $message")
+    System.err.println("[line $line] Error$where: $message")
     hadError = true
 }
 
@@ -48,6 +48,7 @@ fun runFile(path: String) {
 fun run(source: String) {
     val scanner = Scanner(source)
     val tokens: List<Token> = scanner.scanTokens()
+
 
     val parser = Parser(tokens)
     val stmts: List<Stmt?> = parser.parse()

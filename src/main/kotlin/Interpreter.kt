@@ -3,7 +3,8 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
-    var environment = Environment()
+    private var environment = Environment()
+
     fun interpret(stmts: List<Stmt?>) {
         try {
             for(stmt in stmts) {

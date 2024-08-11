@@ -1,10 +1,9 @@
 class AstPrinter : Expr.Visitor<String> {
-
     fun print(expr: Expr): String {
         return expr.accept(this);
     }
 
-    private fun parenthesize(name: String, exprs: List<Expr>): String {
+    private fun parenthesize(name: String, vararg exprs: Expr): String {
         var builder: StringBuilder = StringBuilder()
         builder.append("($name")
         for(expr in exprs) {
@@ -15,11 +14,11 @@ class AstPrinter : Expr.Visitor<String> {
         return builder.toString()
     }
     override fun visitBinaryExpr(expr: Expr.Binary): String {
-        return parenthesize(expr.operator.lexeme, listOf(expr.left, expr.right))
+        return parenthesize(expr.operator.lexeme, expr.left, expr.right)
     }
 
     override fun visitUnaryExpr(expr: Expr.Unary): String {
-        return parenthesize(expr.operator.lexeme, listOf(expr.right))
+        return parenthesize(expr.operator.lexeme, expr.right)
     }
 
     override fun visitLiteralExpr(expr: Expr.Literal): String {
@@ -30,7 +29,7 @@ class AstPrinter : Expr.Visitor<String> {
     }
 
     override fun visitGroupingExpr(expr: Expr.Grouping): String {
-        return parenthesize("group", listOf(expr.expression))
+        return parenthesize("group", expr.expression)
     }
 
     override fun visitVariableExpr(expr: Expr.Variable): String {

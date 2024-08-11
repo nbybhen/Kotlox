@@ -238,7 +238,7 @@ class Parser(private val tokens: List<Token>) {
     private fun consume(type: TokenType, message: String): Token {
         if(check(type)) return advance()
 
-        throw error(peek(), message)
+        throw error(previous(), message)
     }
 
 }
