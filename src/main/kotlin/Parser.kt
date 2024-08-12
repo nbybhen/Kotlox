@@ -5,7 +5,10 @@ import error as mainErr
 
 
     program        → statement* EOF ;
-    statement      → exprStmt | printStmt | block ;
+    statement      → ifStmt | exprStmt | printStmt | block | whileStmt | forStmt ;
+    whileStmt      → "while" "(" expression ")" statement ;
+    forStmt        → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
+    ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
     block          → "{" declaration* "}" ;
     declaration    → varDecl | statement ;
     varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
@@ -13,7 +16,9 @@ import error as mainErr
     printStmt      → "print" expression ";" ;
 
     expression     → assignment ;
-    assignment     → IDENTIFIER "=" assignment | equality ;
+    assignment     → IDENTIFIER "=" assignment | logic_or ;
+    logic_or       → logic_and ( "or" logic_and )* ;
+    logic_and      → equality ( "and" equality )* ;
     equality       → comparison ( ( "!=" | "==" ) comparison )* ;
     comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     term           → factor ( ( "-" | "+" ) factor )* ;
@@ -39,7 +44,7 @@ class Parser(private val tokens: List<Token>) {
 
     private fun declaration(): Stmt? {
         try {
-            return if (match(TokenType.VAR)) return varDeclaration() else statement()
+            return if (match(TokenType.VAR)) varDeclaration() else statement()
         } catch (error: ParseError) {
             synchronize()
             return null
@@ -58,10 +63,68 @@ class Parser(private val tokens: List<Token>) {
 
     private fun statement(): Stmt {
         return when {
+            match(TokenType.IF) -> ifStatement()
             match(TokenType.PRINT) -> printStatement()
             match(TokenType.LEFT_BRACE) -> Stmt.Block(block())
+            match(TokenType.WHILE) -> whileStatement()
+            match(TokenType.FOR) -> forStatement()
             else -> expressionStatement()
         }
+    }
+
+    private fun forStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expected '(' after 'for'.")
+
+        val initializer: Stmt?
+        if (match(TokenType.SEMICOLON)) {
+            initializer = null
+        }
+        else if(match(TokenType.VAR)) {
+            initializer = varDeclaration()
+        }
+        else {
+            initializer = expressionStatement()
+        }
+
+        var condition: Expr? = if (!check(TokenType.SEMICOLON)) expression() else null
+        consume(TokenType.SEMICOLON, "Expect ';' after condition.")
+
+        val increment: Expr? = if(!check(TokenType.RIGHT_PAREN)) expression() else null
+        consume(TokenType.RIGHT_PAREN, "Expected ')' after for clauses.")
+
+        var body: Stmt = statement()
+
+        if (increment != null) {
+            body = Stmt.Block(listOf(body, Stmt.Expression(increment)))
+        }
+
+        if (condition == null) condition = Expr.Literal(true)
+        body = Stmt.While(condition, body)
+
+        if (initializer != null) body = Stmt.Block(listOf(initializer, body))
+
+        return body
+    }
+
+    private fun whileStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'")
+        val condition: Expr = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+        val body: Stmt = statement()
+
+        return Stmt.While(condition, body)
+    }
+
+    private fun ifStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after if.")
+        val condition = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+
+        val thenBranch = statement()
+        var elseBranch: Stmt? = null
+        if (match(TokenType.ELSE)) elseBranch = statement()
+
+        return Stmt.If(condition, thenBranch, elseBranch)
     }
 
     private fun printStatement(): Stmt {
@@ -92,7 +155,7 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun assignment(): Expr {
-        val expr: Expr = equality()
+        val expr: Expr = or()
 
         if (match(TokenType.EQUAL)) {
             val equals: Token = previous()
@@ -101,6 +164,30 @@ class Parser(private val tokens: List<Token>) {
             if (expr is Expr.Variable) return Expr.Assign(expr.name, value)
 
             error(equals, "Invalid assignment target.")
+        }
+
+        return expr
+    }
+
+    private fun or(): Expr {
+        var expr: Expr = and()
+
+        while (match(TokenType.OR)) {
+            val or = previous()
+            val right: Expr = and()
+            expr = Expr.Logical(expr, or, right)
+        }
+
+        return expr
+    }
+
+    private fun and(): Expr {
+        var expr: Expr = equality()
+
+        while (match(TokenType.AND)) {
+            val and = previous()
+            val right: Expr = equality()
+            expr = Expr.Logical(expr, and, right)
         }
 
         return expr

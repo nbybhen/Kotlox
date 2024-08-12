@@ -61,7 +61,7 @@ fun run(source: String) {
 }
 
 fun main(args: Array<String>) {
-    println("${args.joinToString(" | ")}")
+    println(args.joinToString(" | "))
     when (args.size) {
         0 -> runPrompt()
         1 -> runFile(args[0])
