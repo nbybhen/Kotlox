@@ -3,7 +3,20 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
-    private var environment = Environment()
+    val globals = Environment()
+    private var environment = globals
+
+    init {
+        globals.define("clock", object: LoxCallable {
+            override fun arity(): Int {
+                return 0
+            }
+
+            override fun call(interpreter: Interpreter, args: List<Any?>): Double {
+                return System.currentTimeMillis().toDouble() / 1000.0
+            }
+        })
+    }
 
     fun interpret(stmts: List<Stmt?>) {
         try {
@@ -112,7 +125,22 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
             if (!isTruthy(left)) return left
         }
 
-        return expr.right
+        return evaluate(expr.right)
+    }
+
+    override fun visitCallExpr(expr: Expr.Call): Any? {
+        val callee = evaluate(expr.callee)
+        val args = mutableListOf<Any?>()
+
+        for (arg in expr.args) {
+            args.add(evaluate(arg))
+        }
+
+        if(callee !is LoxCallable) throw RuntimeError(expr.paren, "Can only call functions and classes.")
+
+        if (args.size != callee.arity()) throw RuntimeError(expr.paren, "Expected ${callee.arity()} arguments but got ${args.size}.")
+
+        return callee.call(this@Interpreter, args)
     }
 
     private fun evaluate(expr: Expr?) : Any? {
@@ -168,7 +196,7 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
         }
     }
 
-    private fun executeBlock(stmts: List<Stmt?>, environment: Environment) {
+    fun executeBlock(stmts: List<Stmt?>, environment: Environment) {
         val previous = this.environment
         try {
             this.environment = environment
@@ -221,6 +249,19 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
         while (isTruthy(evaluate(stmt.condition))) execute(stmt.body)
         return null
     }
+
+    override fun visitFunctionStmt(stmt: Stmt.Function): Any? {
+        val function = LoxFunction(stmt, environment)
+        environment.define(stmt.name.lexeme, function)
+        return null
+    }
+
+    override fun visitReturnStmt(stmt: Stmt.Return): Any? {
+        val value: Any? = if (stmt.value != null) evaluate(stmt.value) else null
+        throw Return(value)
+    }
 }
 
 class RuntimeError(val token: Token, override val message: String?) : RuntimeException()
+
+class Return(val value: Any?, override val message: String? = ""): RuntimeException()

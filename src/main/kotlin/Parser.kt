@@ -1,20 +1,26 @@
 import error as mainErr
 
+
 /*
     EBNF GRAMMAR
 
 
     program        → statement* EOF ;
-    statement      → ifStmt | exprStmt | printStmt | block | whileStmt | forStmt ;
+    statement      → ifStmt | exprStmt | printStmt | block | whileStmt | forStmt | returnStmt ;
+    returnStmt     → "return" expression? ";" ;
     whileStmt      → "while" "(" expression ")" statement ;
     forStmt        → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
     ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
-    block          → "{" declaration* "}" ;
-    declaration    → varDecl | statement ;
-    varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
     exprStmt       → expression ";" ;
     printStmt      → "print" expression ";" ;
+    block          → "{" declaration* "}" ;
+    declaration    → funDecl | varDecl | statement ;
+    funDecl        → "fun" function ;
+    function       → IDENTIFIER "(" parameters? ")" block ;
+    varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 
+
+    arguments      → expression ( "," expression )* ;
     expression     → assignment ;
     assignment     → IDENTIFIER "=" assignment | logic_or ;
     logic_or       → logic_and ( "or" logic_and )* ;
@@ -23,8 +29,8 @@ import error as mainErr
     comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     term           → factor ( ( "-" | "+" ) factor )* ;
     factor         → unary ( ( "/" | "*" ) unary )* ;
-    unary          → ( "!" | "-" ) unary
-    | primary ;
+    unary          → ( "!" | "-" ) unary | call ;
+    call           → primary ( "(" arguments? ")" )* ;
     primary        → NUMBER | STRING | "true" | "false" | "nil"
     | "(" expression ")" | IDENTIFIER  ;
 */
@@ -44,11 +50,33 @@ class Parser(private val tokens: List<Token>) {
 
     private fun declaration(): Stmt? {
         try {
-            return if (match(TokenType.VAR)) varDeclaration() else statement()
+            return if (match(TokenType.VAR)) varDeclaration() else if (match(TokenType.FUN)) function("function") else statement()
         } catch (error: ParseError) {
             synchronize()
             return null
         }
+    }
+
+    private fun function(kind: String): Stmt {
+        val name: Token = consume(TokenType.IDENTIFIER, "Expected $kind name.")
+        consume(TokenType.LEFT_PAREN, "Expected '(' after $kind name.")
+
+        val parameters = mutableListOf<Token>()
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                if (parameters.size >= 255) {
+                    error(peek(), "Can't have more than 255 parameters.")
+                }
+
+                parameters.add(consume(TokenType.IDENTIFIER, "Expect parameter name."))
+            } while (match(TokenType.COMMA))
+        }
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+
+        consume(TokenType.LEFT_BRACE, "Expected '{' before $kind body.")
+        val body = block()
+
+        return Stmt.Function(name, parameters, body)
     }
 
     private fun varDeclaration(): Stmt {
@@ -68,8 +96,17 @@ class Parser(private val tokens: List<Token>) {
             match(TokenType.LEFT_BRACE) -> Stmt.Block(block())
             match(TokenType.WHILE) -> whileStatement()
             match(TokenType.FOR) -> forStatement()
+            match(TokenType.RETURN) -> returnStatement()
             else -> expressionStatement()
         }
+    }
+
+    private fun returnStatement(): Stmt {
+        val keyword = previous()
+        val value: Expr? = if (!check(TokenType.SEMICOLON)) expression() else null
+
+        consume(TokenType.SEMICOLON, "Expected ';' after return value.")
+        return Stmt.Return(keyword, value)
     }
 
     private fun forStatement(): Stmt {
@@ -245,7 +282,39 @@ class Parser(private val tokens: List<Token>) {
             return Expr.Unary(operator, right)
         }
 
-        return literal()
+        return call()
+    }
+
+    private fun call(): Expr {
+        var expr = literal()
+
+        while (true) {
+            if (match(TokenType.LEFT_PAREN)) {
+                expr = finishCall(expr)
+            }
+            else {
+                break
+            }
+        }
+
+        return expr
+    }
+
+    private fun finishCall(callee: Expr): Expr {
+        val args = mutableListOf<Expr>()
+
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                if (args.size >= 255) {
+                    error(peek(), "Can't have more than 255 arguments.")
+                }
+                args.add(expression())
+            } while (match(TokenType.COMMA))
+        }
+
+        val paren = consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
+
+        return Expr.Call(callee, paren, args)
     }
 
     private fun literal(): Expr {
