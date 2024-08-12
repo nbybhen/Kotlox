@@ -130,17 +130,15 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
 
     override fun visitCallExpr(expr: Expr.Call): Any? {
         val callee = evaluate(expr.callee)
-        val args = mutableListOf<Any?>()
 
-        for (arg in expr.args) {
-            args.add(evaluate(arg))
-        }
+
+        expr.args.map { evaluate(it) }
 
         if(callee !is LoxCallable) throw RuntimeError(expr.paren, "Can only call functions and classes.")
 
-        if (args.size != callee.arity()) throw RuntimeError(expr.paren, "Expected ${callee.arity()} arguments but got ${args.size}.")
+        if (expr.args.size != callee.arity()) throw RuntimeError(expr.paren, "Expected ${callee.arity()} arguments but got ${expr.args.size}.")
 
-        return callee.call(this@Interpreter, args)
+        return callee.call(this@Interpreter, expr.args)
     }
 
     private fun evaluate(expr: Expr?) : Any? {
@@ -264,4 +262,4 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
 
 class RuntimeError(val token: Token, override val message: String?) : RuntimeException()
 
-class Return(val value: Any?, override val message: String? = ""): RuntimeException()
+class Return(val value: Any?): Throwable()

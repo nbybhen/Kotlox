@@ -4,8 +4,8 @@ class LoxFunction(val declaration: Stmt.Function, val closure: Environment) : Lo
     override fun call(interpreter: Interpreter, args: List<Any?>): Any? {
         val environment = Environment(closure)
 
-        for (i in 0..<declaration.params.size) {
-            environment.define(declaration.params[i].lexeme, args[i])
+        declaration.params.forEachIndexed { index, token ->
+            environment.define(token.lexeme, args[index])
         }
 
         try {
