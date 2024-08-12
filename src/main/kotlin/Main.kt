@@ -55,6 +55,11 @@ fun run(source: String) {
 
     if(hadError) exitProcess(65)
 
+    val resolver = Resolver(interpreter)
+    resolver.resolve(stmts)
+
+    if(hadError) return
+
     interpreter.interpret(stmts)
 
     if(hadRuntimeError) exitProcess(70)
