@@ -3,7 +3,7 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
-    val globals = Environment()
+    private val globals = Environment()
     private var environment = globals
     private var locals = mutableMapOf<Expr, Int>()
 
@@ -149,14 +149,13 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
     override fun visitCallExpr(expr: Expr.Call): Any? {
         val callee = evaluate(expr.callee)
 
-
-        expr.args.map { evaluate(it) }
+        val args = expr.args.map { evaluate(it) }
 
         if(callee !is LoxCallable) throw RuntimeError(expr.paren, "Can only call functions and classes.")
 
-        if (expr.args.size != callee.arity()) throw RuntimeError(expr.paren, "Expected ${callee.arity()} arguments but got ${expr.args.size}.")
+        if (args.size != callee.arity()) throw RuntimeError(expr.paren, "Expected ${callee.arity()} arguments but got ${args.size}.")
 
-        return callee.call(this@Interpreter, expr.args)
+        return callee.call(this@Interpreter, args)
     }
 
     private fun evaluate(expr: Expr?) : Any? {
