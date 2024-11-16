@@ -6,6 +6,7 @@ import error as mainErr
 
 
     program        → statement* EOF ;
+
     statement      → ifStmt | exprStmt | printStmt | block | whileStmt | forStmt | returnStmt ;
     returnStmt     → "return" expression? ";" ;
     whileStmt      → "while" "(" expression ")" statement ;
@@ -14,15 +15,17 @@ import error as mainErr
     exprStmt       → expression ";" ;
     printStmt      → "print" expression ";" ;
     block          → "{" declaration* "}" ;
-    declaration    → funDecl | varDecl | statement ;
+
+    declaration    → classDecl | funDecl | varDecl | statement ;
+    classDecl      → "class" IDENTIFIER "{" function* "}" ;
+    parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
     funDecl        → "fun" function ;
     function       → IDENTIFIER "(" parameters? ")" block ;
     varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 
-
     arguments      → expression ( "," expression )* ;
     expression     → assignment ;
-    assignment     → IDENTIFIER "=" assignment | logic_or ;
+    assignment     → ( call "." )? IDENTIFIER "=" assignment | logic_or ;
     logic_or       → logic_and ( "or" logic_and )* ;
     logic_and      → equality ( "and" equality )* ;
     equality       → comparison ( ( "!=" | "==" ) comparison )* ;
@@ -30,7 +33,7 @@ import error as mainErr
     term           → factor ( ( "-" | "+" ) factor )* ;
     factor         → unary ( ( "/" | "*" ) unary )* ;
     unary          → ( "!" | "-" ) unary | call ;
-    call           → primary ( "(" arguments? ")" )* ;
+    call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
     primary        → NUMBER | STRING | "true" | "false" | "nil"
     | "(" expression ")" | IDENTIFIER  ;
 */
@@ -52,6 +55,7 @@ class Parser(private val tokens: List<Token>) {
         return try {
             when {
                 match(TokenType.VAR) -> varDeclaration()
+                match(TokenType.CLASS) -> classDeclaration()
                 match(TokenType.FUN) -> function("function")
                 else -> statement()
             }
@@ -61,7 +65,21 @@ class Parser(private val tokens: List<Token>) {
         }
     }
 
-    private fun function(kind: String): Stmt {
+    private fun classDeclaration(): Stmt {
+        val name = consume(TokenType.IDENTIFIER, "Expected class name.")
+        consume(TokenType.LEFT_BRACE, "Expected '{' before class body.")
+
+        val methods: MutableList<Stmt.Function> = mutableListOf()
+        while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+            methods.add(function("method"))
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expected '}' after class body.")
+
+        return Stmt.Class(name, methods)
+    }
+
+    private fun function(kind: String): Stmt.Function {
         val name: Token = consume(TokenType.IDENTIFIER, "Expected $kind name.")
         consume(TokenType.LEFT_PAREN, "Expected '(' after $kind name.")
 
@@ -83,7 +101,7 @@ class Parser(private val tokens: List<Token>) {
         return Stmt.Function(name, parameters, body)
     }
 
-    private fun varDeclaration(): Stmt {
+    private fun varDeclaration(): Stmt.Var {
         val name: Token = consume(TokenType.IDENTIFIER, "Expect variable name")
 
         var initializer: Expr? = null
@@ -105,7 +123,7 @@ class Parser(private val tokens: List<Token>) {
         }
     }
 
-    private fun returnStatement(): Stmt {
+    private fun returnStatement(): Stmt.Return {
         val keyword = previous()
         val value: Expr? = if (!check(TokenType.SEMICOLON)) expression() else null
 
@@ -203,6 +221,7 @@ class Parser(private val tokens: List<Token>) {
             val value = assignment()
 
             if (expr is Expr.Variable) return Expr.Assign(expr.name, value)
+            if (expr is Expr.Get) return Expr.Set(expr.obj, expr.name, value)
 
             error(equals, "Invalid assignment target.")
         }
@@ -293,11 +312,13 @@ class Parser(private val tokens: List<Token>) {
         var expr = literal()
 
         while (true) {
-            if (match(TokenType.LEFT_PAREN)) {
-                expr = finishCall(expr)
-            }
-            else {
-                break
+            when {
+                match(TokenType.LEFT_PAREN) -> expr = finishCall(expr)
+                match(TokenType.DOT) -> {
+                    val name = consume(TokenType.IDENTIFIER, "Expected property name after '.'")
+                    expr = Expr.Get(expr, name)
+                }
+                else -> break
             }
         }
 

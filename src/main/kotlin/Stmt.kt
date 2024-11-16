@@ -8,6 +8,7 @@ sealed interface Stmt {
         fun visitWhileStmt(stmt: While): R
         fun visitFunctionStmt(stmt: Function): R
         fun visitReturnStmt(stmt: Return): R
+        fun visitClassStmt(stmt: Class): R
     }
 
     data class Expression(val expression: Expr) : Stmt {
@@ -33,6 +34,14 @@ sealed interface Stmt {
             return visitor.visitBlockStmt(this@Block)
         }
     }
+
+    data class Class(val name: Token, val methods: List<Function>): Stmt {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitClassStmt(this@Class)
+        }
+    }
+
+
 
     data class If(val condition: Expr, val thenBranch: Stmt, val elseBranch: Stmt?): Stmt {
         override fun <R> accept(visitor: Visitor<R>): R {

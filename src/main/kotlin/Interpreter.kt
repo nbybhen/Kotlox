@@ -158,6 +158,13 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
         return callee.call(this@Interpreter, args)
     }
 
+    override fun visitGetExpr(get: Expr.Get): Any? {
+        val obj = evaluate(get.obj)
+        if (obj is LoxInstance) {
+            return (obj as LoxInstance)
+        }
+    }
+
     private fun evaluate(expr: Expr?) : Any? {
         return expr?.accept(this)
     }
@@ -278,6 +285,13 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
     override fun visitReturnStmt(stmt: Stmt.Return): Any? {
         val value: Any? = if (stmt.value != null) evaluate(stmt.value) else null
         throw Return(value)
+    }
+
+    override fun visitClassStmt(stmt: Stmt.Class): Any? {
+        environment.define(stmt.name.lexeme, null)
+        val klass = LoxClass(stmt.name.lexeme)
+        environment.assign(stmt.name, klass)
+        return null
     }
 }
 

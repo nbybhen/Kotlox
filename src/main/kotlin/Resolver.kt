@@ -53,6 +53,10 @@ class Resolver(private val interpreter: Interpreter): Stmt.Visitor<Unit>, Expr.V
         }
     }
 
+    override fun visitGetExpr(get: Expr.Get) {
+        resolve(get.obj)
+    }
+
     override fun visitExpressionStmt(stmt: Stmt.Expression) = resolve(stmt.expression)
 
     override fun visitPrintStmt(stmt: Stmt.Print) = resolve(stmt.expression)
@@ -152,5 +156,10 @@ class Resolver(private val interpreter: Interpreter): Stmt.Visitor<Unit>, Expr.V
         stmt.value?.let {
             resolve(stmt.value)
         }
+    }
+
+    override fun visitClassStmt(stmt: Stmt.Class) {
+        declare(stmt.name)
+        define(stmt.name)
     }
 }
