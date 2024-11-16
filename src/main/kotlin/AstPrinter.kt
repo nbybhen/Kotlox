@@ -48,4 +48,12 @@ class AstPrinter : Expr.Visitor<String> {
         TODO("Not yet implemented")
     }
 
+    override fun visitGetExpr(get: Expr.Get): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun visitSetExpr(set: Expr.Set): String {
+        TODO("Not yet implemented")
+    }
+
 }
