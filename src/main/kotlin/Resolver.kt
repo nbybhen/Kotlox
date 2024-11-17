@@ -1,7 +1,16 @@
 private enum class FunctionType {
     NONE,
-    FUNCTION
+    METHOD,
+    FUNCTION,
+    INITIALIZER
 }
+
+private enum class ClassType {
+    NONE,
+    CLASS
+}
+
+private var currentClass = ClassType.NONE
 
 class Resolver(private val interpreter: Interpreter): Stmt.Visitor<Unit>, Expr.Visitor<Unit> {
     private val scopes: ArrayDeque<MutableMap<String, Boolean>> = ArrayDeque()
@@ -60,6 +69,14 @@ class Resolver(private val interpreter: Interpreter): Stmt.Visitor<Unit>, Expr.V
     override fun visitSetExpr(set: Expr.Set) {
         resolve(set.value)
         resolve(set.obj)
+    }
+
+    override fun visitThisExpr(arg: Expr.This) {
+        if (currentClass == ClassType.NONE) {
+            error(arg.keyword, "Can't use 'this' outside of class.")
+            return
+        }
+        resolveLocal(arg, arg.keyword)
     }
 
     override fun visitExpressionStmt(stmt: Stmt.Expression) = resolve(stmt.expression)
@@ -159,12 +176,33 @@ class Resolver(private val interpreter: Interpreter): Stmt.Visitor<Unit>, Expr.V
         }
 
         stmt.value?.let {
+            if (currentFunction == FunctionType.INITIALIZER) {
+                error(stmt.keyword, "Can't return a value from an initializer.")
+            }
             resolve(stmt.value)
         }
     }
 
     override fun visitClassStmt(stmt: Stmt.Class) {
+        val enclosingClass = currentClass
+        currentClass = ClassType.CLASS
+
         declare(stmt.name)
         define(stmt.name)
+
+        beginScope()
+        scopes.last()["this"] = true
+
+        for (method in stmt.methods) {
+            var declaration = FunctionType.METHOD
+            if (method.name.lexeme == "init") {
+                declaration = FunctionType.INITIALIZER
+            }
+            resolveFunction(method, declaration)
+        }
+
+        endScope()
+
+        currentClass = enclosingClass
     }
 }

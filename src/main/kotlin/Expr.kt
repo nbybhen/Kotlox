@@ -10,6 +10,7 @@ sealed interface Expr {
         fun visitCallExpr(expr: Call): R
         abstract fun visitGetExpr(get: Get): R
         abstract fun visitSetExpr(set: Set): R
+        abstract fun visitThisExpr(arg: This): R
     }
 
     data class Binary(val left: Expr, val operator: Token, val right: Expr) : Expr {
@@ -69,6 +70,12 @@ sealed interface Expr {
     data class Set(val obj: Expr, val name: Token, val value: Expr): Expr {
         override fun <R> accept(visitor: Visitor<R>): R {
             return visitor.visitSetExpr(this@Set)
+        }
+    }
+
+    data class This(val keyword: Token): Expr {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitThisExpr(this@This)
         }
     }
 

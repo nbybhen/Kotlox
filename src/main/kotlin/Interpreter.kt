@@ -161,20 +161,24 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
     override fun visitGetExpr(get: Expr.Get): Any? {
         val obj = evaluate(get.obj)
         if (obj is LoxInstance) {
-            return (obj as LoxInstance)
+            return obj.get(get.name)
         }
 
         throw RuntimeError(get.name, "Only object instances have properties.")
     }
 
-    override fun visitSetExpr(expr: Expr.Set): Any? {
-        val obj = evaluate(expr.obj)
+    override fun visitSetExpr(set: Expr.Set): Any? {
+        val obj = evaluate(set.obj)
 
-        if (obj !is LoxInstance) {throw RuntimeError(expr.name, "Only object instances have fields.")}
+        if (obj !is LoxInstance) throw RuntimeError(set.name, "Only object instances have fields.")
 
-        val value = evaluate(expr.value)
-        obj.set(expr.name, value)
+        val value = evaluate(set.value)
+        obj.set(set.name, value)
         return value
+    }
+
+    override fun visitThisExpr(arg: Expr.This): Any? {
+        return lookUpVariable(arg.keyword, arg)
     }
 
     private fun evaluate(expr: Expr?) : Any? {
@@ -289,7 +293,7 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
     }
 
     override fun visitFunctionStmt(stmt: Stmt.Function): Any? {
-        val function = LoxFunction(stmt, environment)
+        val function = LoxFunction(stmt, environment, false)
         environment.define(stmt.name.lexeme, function)
         return null
     }
@@ -301,7 +305,13 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Any?> {
 
     override fun visitClassStmt(stmt: Stmt.Class): Any? {
         environment.define(stmt.name.lexeme, null)
-        val klass = LoxClass(stmt.name.lexeme)
+
+        val methods: MutableMap<String, LoxFunction> = mutableMapOf()
+        for (method in stmt.methods) {
+            methods[method.name.lexeme] = LoxFunction(method, environment, method.name.lexeme == "init")
+        }
+
+        val klass = LoxClass(stmt.name.lexeme, methods)
         environment.assign(stmt.name, klass)
         return null
     }

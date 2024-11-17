@@ -61,6 +61,10 @@ fun run(source: String) {
 
     if(hadError) return
 
+//    stmts.forEach {
+//        println("$it")
+//    }
+
     interpreter.interpret(stmts)
 
     if(hadRuntimeError) exitProcess(70)

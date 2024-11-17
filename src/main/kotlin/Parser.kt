@@ -354,6 +354,7 @@ class Parser(private val tokens: List<Token>) {
                 Expr.Grouping(expr)
             }
             match(TokenType.IDENTIFIER) -> Expr.Variable(previous())
+            match(TokenType.THIS) -> Expr.This(previous())
             else -> throw error(peek(), "Expected expression")
         }
     }
