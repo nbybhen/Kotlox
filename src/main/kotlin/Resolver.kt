@@ -7,7 +7,8 @@ private enum class FunctionType {
 
 private enum class ClassType {
     NONE,
-    CLASS
+    CLASS,
+    SUBCLASS
 }
 
 private var currentClass = ClassType.NONE
@@ -75,6 +76,15 @@ class Resolver(private val interpreter: Interpreter): Stmt.Visitor<Unit>, Expr.V
         if (currentClass == ClassType.NONE) {
             error(arg.keyword, "Can't use 'this' outside of class.")
             return
+        }
+        resolveLocal(arg, arg.keyword)
+    }
+
+    override fun visitSuperExpr(arg: Expr.Super) {
+        if (currentClass == ClassType.NONE) {
+            error(arg.keyword, "Can't use 'super' outside of a class.")
+        } else if (currentClass != ClassType.SUBCLASS) {
+            error(arg.keyword, "Can't use 'super' in a class with no subclass.")
         }
         resolveLocal(arg, arg.keyword)
     }
@@ -190,6 +200,18 @@ class Resolver(private val interpreter: Interpreter): Stmt.Visitor<Unit>, Expr.V
         declare(stmt.name)
         define(stmt.name)
 
+        // Prevents declaring a class that is a subclass of itself (class Oops < Oops {})
+        if(stmt.superclass != null && stmt.name.lexeme == stmt.superclass.name.lexeme) {
+            error(stmt.superclass.name, "A class can't inherit from itself.")
+        }
+
+        stmt.superclass?.let {
+            currentClass = ClassType.SUBCLASS
+            resolve(it)
+            beginScope()
+            scopes.last().put("super", true)
+        }
+
         beginScope()
         scopes.last()["this"] = true
 
@@ -203,6 +225,7 @@ class Resolver(private val interpreter: Interpreter): Stmt.Visitor<Unit>, Expr.V
 
         endScope()
 
+        stmt.superclass?.let { endScope() }
         currentClass = enclosingClass
     }
 }

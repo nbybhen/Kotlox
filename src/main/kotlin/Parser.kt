@@ -17,7 +17,7 @@ import error as mainErr
     block          → "{" declaration* "}" ;
 
     declaration    → classDecl | funDecl | varDecl | statement ;
-    classDecl      → "class" IDENTIFIER "{" function* "}" ;
+    classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;
     parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
     funDecl        → "fun" function ;
     function       → IDENTIFIER "(" parameters? ")" block ;
@@ -34,8 +34,9 @@ import error as mainErr
     factor         → unary ( ( "/" | "*" ) unary )* ;
     unary          → ( "!" | "-" ) unary | call ;
     call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
-    primary        → NUMBER | STRING | "true" | "false" | "nil"
-    | "(" expression ")" | IDENTIFIER  ;
+    literal        → "true" | "false" | "nil" | "this"
+               | NUMBER | STRING | IDENTIFIER | "(" expression ")"
+               | "super" "." IDENTIFIER ;
 */
 
 class Parser(private val tokens: List<Token>) {
@@ -67,6 +68,13 @@ class Parser(private val tokens: List<Token>) {
 
     private fun classDeclaration(): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expected class name.")
+        var superclass: Expr.Variable? = null
+
+        if (match(TokenType.LESS)) {
+            consume(TokenType.IDENTIFIER, "Expect superclass name.")
+            superclass = Expr.Variable(previous())
+        }
+
         consume(TokenType.LEFT_BRACE, "Expected '{' before class body.")
 
         val methods: MutableList<Stmt.Function> = mutableListOf()
@@ -76,7 +84,7 @@ class Parser(private val tokens: List<Token>) {
 
         consume(TokenType.RIGHT_BRACE, "Expected '}' after class body.")
 
-        return Stmt.Class(name, methods)
+        return Stmt.Class(name, superclass, methods)
     }
 
     private fun function(kind: String): Stmt.Function {
@@ -355,6 +363,12 @@ class Parser(private val tokens: List<Token>) {
             }
             match(TokenType.IDENTIFIER) -> Expr.Variable(previous())
             match(TokenType.THIS) -> Expr.This(previous())
+            match(TokenType.SUPER) -> {
+                val keyword = previous()
+                consume(TokenType.DOT, "Expected '.' after 'super'.")
+                val method = consume(TokenType.IDENTIFIER, "Expect superclass method name.")
+                Expr.Super(keyword, method)
+            }
             else -> throw error(peek(), "Expected expression")
         }
     }
